@@ -1,0 +1,132 @@
+############################################
+# COMPONENTS
+############################################
+
+add component -type Python -name SensorsComponent
+add component -type Python -name PLCComponent
+add component -type Python -name ActuatorsComponent
+add component -type Python -name HumanResourceComponent
+
+############################################
+# PORTS + GATEWAYS
+############################################
+
+add port -componentName SensorsComponent -name sens -gateway python2DtEthernet
+add port -componentName PLCComponent -name plc -gateway python2DtEthernet
+add port -componentName ActuatorsComponent -name acts -gateway python2DtEthernet
+add port -componentName HumanResourceComponent -name hr -gateway python2DtEthernet
+
+############################################
+# IP + MAC CONFIG
+############################################
+
+config port -componentName SensorsComponent -portName sens -macAddress 00:10:AA:00:00:01 -ipAddress 10.10.0.1
+config port -componentName PLCComponent -portName plc -macAddress 00:10:AA:00:00:02 -ipAddress 10.10.0.2
+config port -componentName ActuatorsComponent -portName acts -macAddress 00:10:AA:00:00:03 -ipAddress 10.10.0.3
+config port -componentName HumanResourceComponent -portName hr -macAddress 00:10:AA:00:00:04 -ipAddress 10.10.0.4
+
+############################################
+# SIGNAL DEFINITIONS
+############################################
+
+# --- SensorsComponent (Outputs: real sensors; Inputs: consume/refill commands)
+
+define componentSignals -componentName SensorsComponent -signals [printer_present:bool:output,conveyor_full:bool:output,carton_blank_empty:bool:output,tape_empty:bool:output,label_empty:bool:output,tape_low:bool:output,label_low:bool:output,robot_fault:bool:output,flap_fault:bool:output,tape_sealer_fault:bool:output,labeler_fault:bool:output,conveyor_fault:bool:output,loader_pocket_carton_present:bool:output,box_at_flap:bool:output,box_at_tape:bool:output,box_at_label:bool:output,product_placed_ok:bool:output,top_flaps_closed_ok:bool:output,tape_applied_ok:bool:output,label_applied_ok:bool:output,carton_consume_cmd:bool:input,tape_consume_cmd:bool:input,label_consume_cmd:bool:input,refill_stocks_cmd:bool:input]
+
+# --- PLCComponent (Inputs: all sensors; Outputs: actuators, HR, consumption cmds)
+
+define componentSignals -componentName PLCComponent -signals [printer_present:bool:input,conveyor_full:bool:input,carton_blank_empty:bool:input,tape_empty:bool:input,label_empty:bool:input,tape_low:bool:input,label_low:bool:input,robot_fault:bool:input,flap_fault:bool:input,tape_sealer_fault:bool:input,labeler_fault:bool:input,conveyor_fault:bool:input,loader_pocket_carton_present:bool:input,box_at_flap:bool:input,box_at_tape:bool:input,box_at_label:bool:input,product_placed_ok:bool:input,top_flaps_closed_ok:bool:input,tape_applied_ok:bool:input,label_applied_ok:bool:input,hr_repair_done:bool:input,hr_refill_done:bool:input,carton_consume_cmd:bool:output,tape_consume_cmd:bool:output,label_consume_cmd:bool:output,refill_stocks_cmd:bool:output,axis_x_move:bool:output,axis_x_dir:int:output,axis_z_move:bool:output,axis_z_dir:int:output,gripper_cmd:int:output,flap_folder_enable:bool:output,tape_sealer_enable:bool:output,label_unit_enable:bool:output,final_conveyor_motor:bool:output,carton_erector_enable:bool:output,carton_conveyor_motor:bool:output,carton_conveyor_stopper:bool:output,tower_light_green:bool:output,tower_light_yellow:bool:output,tower_light_red:bool:output,hr_repair_request:bool:output,hr_refill_request:bool:output,hr_repair_type:int:output,hr_refill_type:int:output]
+
+# --- ActuatorsComponent (Inputs only)
+
+define componentSignals -componentName ActuatorsComponent -signals [axis_x_move:bool:input,axis_x_dir:int:input,axis_z_move:bool:input,axis_z_dir:int:input,gripper_cmd:int:input,flap_folder_enable:bool:input,tape_sealer_enable:bool:input,label_unit_enable:bool:input,final_conveyor_motor:bool:input,carton_erector_enable:bool:input,carton_conveyor_motor:bool:input,carton_conveyor_stopper:bool:input,tower_light_green:bool:input,tower_light_yellow:bool:input,tower_light_red:bool:input]
+
+# --- HumanResourceComponent (Inputs: HR requests; Outputs: done flags)
+
+define componentSignals -componentName HumanResourceComponent -signals [hr_repair_request:bool:input,hr_refill_request:bool:input,hr_repair_type:int:input,hr_refill_type:int:input,hr_repair_done:bool:output,hr_refill_done:bool:output]
+
+############################################
+# PORT SOCKETS
+############################################
+
+# Sensors → PLC (server on Sensors)
+add portSocket -componentName SensorsComponent -portName sens -ipPortNum 9001 -socketType server -protocol tcpIp
+add portSocket -componentName PLCComponent -portName plc -ipPortNum 9001 -socketType client -protocol tcpIp
+
+# PLC → Actuators (server on PLC)
+add portSocket -componentName PLCComponent -portName plc -ipPortNum 9002 -socketType server -protocol tcpIp
+add portSocket -componentName ActuatorsComponent -portName acts -ipPortNum 9002 -socketType client -protocol tcpIp
+
+# PLC → HR (server on PLC)
+add portSocket -componentName PLCComponent -portName plc -ipPortNum 9003 -socketType server -protocol tcpIp
+add portSocket -componentName HumanResourceComponent -portName hr -ipPortNum 9003 -socketType client -protocol tcpIp
+
+############################################
+# SIGNAL CONNECTIONS
+############################################
+
+# Sensors → PLC (explicit)
+connect signals -sourceSignal SensorsComponent.printer_present -destSignal PLCComponent.printer_present -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.conveyor_full -destSignal PLCComponent.conveyor_full -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.carton_blank_empty -destSignal PLCComponent.carton_blank_empty -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.tape_empty -destSignal PLCComponent.tape_empty -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.label_empty -destSignal PLCComponent.label_empty -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.tape_low -destSignal PLCComponent.tape_low -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.label_low -destSignal PLCComponent.label_low -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.robot_fault -destSignal PLCComponent.robot_fault -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.flap_fault -destSignal PLCComponent.flap_fault -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.tape_sealer_fault -destSignal PLCComponent.tape_sealer_fault -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.labeler_fault -destSignal PLCComponent.labeler_fault -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.conveyor_fault -destSignal PLCComponent.conveyor_fault -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.loader_pocket_carton_present -destSignal PLCComponent.loader_pocket_carton_present -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.box_at_flap -destSignal PLCComponent.box_at_flap -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.box_at_tape -destSignal PLCComponent.box_at_tape -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.box_at_label -destSignal PLCComponent.box_at_label -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.product_placed_ok -destSignal PLCComponent.product_placed_ok -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.top_flaps_closed_ok -destSignal PLCComponent.top_flaps_closed_ok -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.tape_applied_ok -destSignal PLCComponent.tape_applied_ok -sourcePortName sens -destPortName plc
+connect signals -sourceSignal SensorsComponent.label_applied_ok -destSignal PLCComponent.label_applied_ok -sourcePortName sens -destPortName plc
+
+# PLC → Sensors (consumption commands)
+connect signals -sourceSignal PLCComponent.carton_consume_cmd -destSignal SensorsComponent.carton_consume_cmd -sourcePortName plc -destPortName sens
+connect signals -sourceSignal PLCComponent.tape_consume_cmd -destSignal SensorsComponent.tape_consume_cmd -sourcePortName plc -destPortName sens
+connect signals -sourceSignal PLCComponent.label_consume_cmd -destSignal SensorsComponent.label_consume_cmd -sourcePortName plc -destPortName sens
+connect signals -sourceSignal PLCComponent.refill_stocks_cmd -destSignal SensorsComponent.refill_stocks_cmd -sourcePortName plc -destPortName sens
+
+# PLC → Actuators (explicit)
+connect signals -sourceSignal PLCComponent.axis_x_move -destSignal ActuatorsComponent.axis_x_move -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.axis_x_dir -destSignal ActuatorsComponent.axis_x_dir -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.axis_z_move -destSignal ActuatorsComponent.axis_z_move -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.axis_z_dir -destSignal ActuatorsComponent.axis_z_dir -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.gripper_cmd -destSignal ActuatorsComponent.gripper_cmd -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.flap_folder_enable -destSignal ActuatorsComponent.flap_folder_enable -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.tape_sealer_enable -destSignal ActuatorsComponent.tape_sealer_enable -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.label_unit_enable -destSignal ActuatorsComponent.label_unit_enable -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.final_conveyor_motor -destSignal ActuatorsComponent.final_conveyor_motor -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.carton_erector_enable -destSignal ActuatorsComponent.carton_erector_enable -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.carton_conveyor_motor -destSignal ActuatorsComponent.carton_conveyor_motor -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.carton_conveyor_stopper -destSignal ActuatorsComponent.carton_conveyor_stopper -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.tower_light_green -destSignal ActuatorsComponent.tower_light_green -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.tower_light_yellow -destSignal ActuatorsComponent.tower_light_yellow -sourcePortName plc -destPortName acts
+connect signals -sourceSignal PLCComponent.tower_light_red -destSignal ActuatorsComponent.tower_light_red -sourcePortName plc -destPortName acts
+
+# PLC → HR
+connect signals -sourceSignal PLCComponent.hr_repair_request -destSignal HumanResourceComponent.hr_repair_request -sourcePortName plc -destPortName hr
+connect signals -sourceSignal PLCComponent.hr_refill_request -destSignal HumanResourceComponent.hr_refill_request -sourcePortName plc -destPortName hr
+connect signals -sourceSignal PLCComponent.hr_repair_type -destSignal HumanResourceComponent.hr_repair_type -sourcePortName plc -destPortName hr
+connect signals -sourceSignal PLCComponent.hr_refill_type -destSignal HumanResourceComponent.hr_refill_type -sourcePortName plc -destPortName hr
+
+# HR → PLC
+connect signals -sourceSignal HumanResourceComponent.hr_repair_done -destSignal PLCComponent.hr_repair_done -sourcePortName hr -destPortName plc
+connect signals -sourceSignal HumanResourceComponent.hr_refill_done -destSignal PLCComponent.hr_refill_done -sourcePortName hr -destPortName plc
+
+############################################
+# SIMULATION SETUP
+############################################
+
+set digitalTwinName PackagingStationClean
+set workspaceDir .
+set simulationStep 0.01 s
+set totalSimTime 400 s
+
+generate
